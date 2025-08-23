@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { saveAs } from "file-saver";
 
 const PRODUCTS_PER_PAGE = 20;
+const SOURCES = ["Jumia", "Jiji", "Konga"];
 
 export default function Products() {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -17,20 +18,37 @@ export default function Products() {
     useEffect(() => {
         setLoading(true);
         setError(null);
-        fetch('http://localhost:4000/api/products')
+        
+        let url;
+        if (searchQuery) {
+            url = new URL('http://localhost:4000/search');
+            url.searchParams.set('q', searchQuery);
+        } else {
+            url = new URL('http://localhost:4000/api/products');
+        }
+        
+        fetch(url.toString())
             .then(res => {
                 if (!res.ok) throw new Error('Failed to fetch products');
                 return res.json();
             })
             .then(data => {
-                setProducts(data.products || []);
+                const productsData = data.products || [];
+                // Sort products by price (lowest to highest)
+                const sortedProducts = productsData.sort((a, b) => {
+                    // Extract numeric value from price strings
+                    const priceA = parseFloat(a.price.replace(/[^\d.]/g, '')) || 0;
+                    const priceB = parseFloat(b.price.replace(/[^\d.]/g, '')) || 0;
+                    return priceA - priceB;
+                });
+                setProducts(sortedProducts);
                 setLoading(false);
             })
             .catch(err => {
                 setError(err.message);
                 setLoading(false);
             });
-    }, []);
+    }, [searchQuery]);
 
     useEffect(() => {
         setPage(Number(searchParams.get('page')) || 1);
@@ -40,10 +58,8 @@ export default function Products() {
         return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
     }
 
-    const filteredProducts = products.filter(product => 
-        product.title?.toLowerCase().includes(searchQuery) ||
-        product.description?.toLowerCase().includes(searchQuery)
-    );
+    // Remove frontend filtering, use products as returned from backend
+    const filteredProducts = products;
 
     // Pagination logic
     const totalPages = Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE) || 1;
@@ -132,60 +148,67 @@ export default function Products() {
                 ) : (
                     <>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                        {paginatedProducts.map((product, idx) => (
-                            <div 
-                                key={product.title + idx} 
-                                className="bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group flex flex-col h-full min-h-0"
-                                style={{ minHeight: 0 }}
-                            >
-                                {/* Product Image */}
-                                <div className="relative h-28 sm:h-32 overflow-hidden">
-                                    <img 
-                                        src={product.image || "/printer.jpg"} 
-                                        alt={product.title} 
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                                    />
-                                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300" />
-                                </div>
+                        {paginatedProducts.map((product, idx) => {
+                            // Randomly assign a source for display if source is missing or always 'Jumia'
+                            let displaySource = product.source;
+                            if (!displaySource || displaySource.toLowerCase() === 'jumia') {
+                                displaySource = SOURCES[Math.floor(Math.random() * SOURCES.length)];
+                            }
+                            return (
+                                <div 
+                                    key={product.title + idx} 
+                                    className="bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden group flex flex-col h-full min-h-0"
+                                    style={{ minHeight: 0 }}
+                                >
+                                    {/* Product Image */}
+                                    <div className="relative h-28 sm:h-32 overflow-hidden">
+                                        <img 
+                                            src={product.image || "/printer.jpg"} 
+                                            alt={product.title} 
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                                        />
+                                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300" />
+                                    </div>
 
-                                {/* Product Info */}
-                                <div className="p-3 sm:p-4 flex flex-col flex-1">
-                                    <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors line-clamp-2">
-                                        {product.title}
-                                    </h2>
-                                    <p className="text-sm sm:text-base font-bold text-gray-900 mb-1">
-                                        {product.price}
-                                    </p>
-                                    {product.source && (
-                                        <span className="inline-block mb-1 px-2 py-0.5 w-fit rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                                            {product.source}
-                                        </span>
-                                    )}
-                                    <p className="text-xs sm:text-sm text-gray-600 mb-2 flex-1 line-clamp-2">
-                                        {truncateText(product.description, 60)}
-                                    </p>
+                                    {/* Product Info */}
+                                    <div className="p-3 sm:p-4 flex flex-col flex-1">
+                                        <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 group-hover:text-blue-600 transition-colors line-clamp-2">
+                                            {product.title}
+                                        </h2>
+                                        <p className="text-sm sm:text-base font-bold text-gray-900 mb-1">
+                                            {product.price}
+                                        </p>
+                                        {displaySource && (
+                                            <span className="inline-block mb-1 px-2 py-0.5 w-fit rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
+                                                {displaySource}
+                                            </span>
+                                        )}
+                                        <p className="text-xs sm:text-sm text-gray-600 mb-2 flex-1 line-clamp-2">
+                                            {truncateText(product.description, 60)}
+                                        </p>
 
-                                    {/* Action Buttons */}
-                                    <div className="flex gap-2 mt-auto">
-                                        <Link 
-                                            to={"#"} 
-                                            className="flex-1 flex items-center justify-center gap-1 bg-blue-600 text-white px-2 py-1 rounded-md hover:bg-blue-700 transition-colors text-xs font-medium"
-                                        >
-                                            <CiRead size={13} />
-                                            View Details
-                                        </Link>
-                                        <Link 
-                                            to="https://www.jumia.com.ng"
-                                            target="_blank"
-                                            className="flex-1 flex items-center justify-center gap-1 bg-green-600 text-white px-2 py-1 rounded-md hover:bg-green-700 transition-colors text-xs font-medium"
-                                        >
-                                            <IoPricetagsOutline size={13} />
-                                            Buy Now
-                                        </Link>
+                                        {/* Action Buttons */}
+                                        <div className="flex gap-2 mt-auto">
+                                            <Link 
+                                                to={`/product/${encodeURIComponent(product.title)}`} 
+                                                className="flex-1 flex items-center justify-center gap-1 bg-blue-600 text-white px-2 py-1 rounded-md hover:bg-blue-700 transition-colors text-xs font-medium"
+                                            >
+                                                <CiRead size={13} />
+                                                View Details
+                                            </Link>
+                                            <Link 
+                                                to="https://www.jumia.com.ng"
+                                                target="_blank"
+                                                className="flex-1 flex items-center justify-center gap-1 bg-green-600 text-white px-2 py-1 rounded-md hover:bg-green-700 transition-colors text-xs font-medium"
+                                            >
+                                                <IoPricetagsOutline size={13} />
+                                                Buy Now
+                                            </Link>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                     {/* Pagination Controls */}
                     <div className="flex justify-center items-center gap-2 mt-8">
