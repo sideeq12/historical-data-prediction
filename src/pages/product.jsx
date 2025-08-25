@@ -113,7 +113,7 @@ export default function ProductPage() {
 
               {/* Action Button */}
               <Link 
-                to="https://www.jumia.com.ng" 
+                to={product.url || "https://www.jumia.com.ng"} 
                 target="_blank"
                 className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
               >

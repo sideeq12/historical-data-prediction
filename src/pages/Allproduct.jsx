@@ -149,11 +149,6 @@ export default function Products() {
                     <>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                         {paginatedProducts.map((product, idx) => {
-                            // Randomly assign a source for display if source is missing or always 'Jumia'
-                            let displaySource = product.source;
-                            if (!displaySource || displaySource.toLowerCase() === 'jumia') {
-                                displaySource = SOURCES[Math.floor(Math.random() * SOURCES.length)];
-                            }
                             return (
                                 <div 
                                     key={product.title + idx} 
@@ -178,9 +173,9 @@ export default function Products() {
                                         <p className="text-sm sm:text-base font-bold text-gray-900 mb-1">
                                             {product.price}
                                         </p>
-                                        {displaySource && (
+                                        {product.source && (
                                             <span className="inline-block mb-1 px-2 py-0.5 w-fit rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                                                {displaySource}
+                                                {product.source.charAt(0).toUpperCase() + product.source.slice(1)}
                                             </span>
                                         )}
                                         <p className="text-xs sm:text-sm text-gray-600 mb-2 flex-1 line-clamp-2">
@@ -197,7 +192,7 @@ export default function Products() {
                                                 View Details
                                             </Link>
                                             <Link 
-                                                to="https://www.jumia.com.ng"
+                                                to={product.url || "https://www.jumia.com.ng"}
                                                 target="_blank"
                                                 className="flex-1 flex items-center justify-center gap-1 bg-green-600 text-white px-2 py-1 rounded-md hover:bg-green-700 transition-colors text-xs font-medium"
                                             >
